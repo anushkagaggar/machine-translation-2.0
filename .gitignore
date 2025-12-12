@@ -89,3 +89,7 @@ dist/
 # ============================
 *.tar
 docker/*.tar
+
+tokenizer/*.model
+tokenizer/*.vocab
+tokenizer/spm_corpus.txt

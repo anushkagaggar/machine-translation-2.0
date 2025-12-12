@@ -1,0 +1,17 @@
+tokenizer:
+  input_corpus: "tokenizer/spm_corpus.txt"
+  model_prefix: "tokenizer/tokenizer"
+
+  vocab_size: 8000
+  model_type: "bpe"
+  character_coverage: 0.9995
+
+  input_sentence_size: 20000
+  shuffle_input_sentence: true
+
+  bos_id: 1
+  eos_id: 2
+  unk_id: 0
+  pad_id: 3
+
+  unk_surface: "<unk>"

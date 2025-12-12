@@ -31,17 +31,23 @@ def encode_src(sp, text, max_len):
 def greedy_decode(model, src_tensor, sp, max_len, pad_id=3, bos_id=1, eos_id=2, device="cpu"):
     model.eval()
 
-    src_tensor = src_tensor.unsqueeze(0).to(device)   # (1, S)
-    src_pad_mask = (src_tensor == pad_id)
+    # Move properly BEFORE unsqueeze
+    src_tensor = src_tensor.to(device)
+    src_tensor = src_tensor.unsqueeze(0)   # (1, S)
 
-    # encoder output is auto-handled by forward()
+    src_pad_mask = (src_tensor == pad_id).to(device)
+
+    # initial target token
     generated = torch.tensor([[bos_id]], dtype=torch.long, device=device)
 
     for _ in range(max_len):
-        tgt_pad_mask = (generated == pad_id)
+        tgt_pad_mask = (generated == pad_id).to(device)
 
         L = generated.size(1)
-        tgt_mask = torch.triu(torch.ones((L, L), device=device) == 1, diagonal=1)
+        tgt_mask = torch.triu(
+            torch.ones((L, L), device=device) == 1,
+            diagonal=1
+        )
         tgt_mask = tgt_mask.float().masked_fill(tgt_mask, float('-inf'))
 
         logits = model(
@@ -52,19 +58,16 @@ def greedy_decode(model, src_tensor, sp, max_len, pad_id=3, bos_id=1, eos_id=2, 
             tgt_mask=tgt_mask
         )
 
-        # get last step prediction
         next_token = logits[:, -1, :].argmax(dim=-1)
+        next_token = next_token.to(device)
 
-        # append
         generated = torch.cat([generated, next_token.unsqueeze(1)], dim=1)
 
         if next_token.item() == eos_id:
             break
 
-    # remove BOS
     out_ids = generated[0].tolist()[1:]
     return sp.decode(out_ids)
-
 
 # ----------------------------
 # Main CLI

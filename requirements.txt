@@ -1,0 +1,23 @@
+torch
+torchvision
+torchaudio
+
+sentencepiece
+
+tqdm
+numpy
+pandas
+
+fastapi
+uvicorn
+
+streamlit
+
+sacrebleu
+
+pyyaml
+
+requests
+
+# optional but useful/harmless
+matplotlib

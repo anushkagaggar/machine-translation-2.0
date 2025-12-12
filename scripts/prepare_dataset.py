@@ -1,107 +1,136 @@
 import json
-import random
-import argparse
-import unicodedata
 from pathlib import Path
+from tqdm import tqdm
+import argparse
 
 
-def normalize(text: str) -> str:
-    if text is None:
-        return ""
-    text = unicodedata.normalize("NFKC", text)
-    text = text.replace("\u3000", " ")  # full-width space
-    return text.strip()
+# -----------------------------
+# Language detection utilities
+# -----------------------------
+def is_japanese(text: str):
+    for ch in text:
+        # Hiragana / Katakana / CJK Unified Ideographs
+        if (
+            "\u3040" <= ch <= "\u30ff" or
+            "\u4e00" <= ch <= "\u9faf" or
+            "\u3400" <= ch <= "\u4dbf"
+        ):
+            return True
+    return False
 
 
-def extract_pair(obj: dict):
-    """
-    Extract English↔Japanese pair assuming fixed structure:
-    messages[1] = English (user)
-    messages[2] = Japanese (assistant)
-    """
-    try:
-        msgs = obj.get("messages", [])
-        if len(msgs) < 3:
-            return None, None
-
-        en = msgs[1].get("content", "")
-        ja = msgs[2].get("content", "")
-
-        return en, ja
-
-    except Exception:
-        return None, None
+def is_english(text: str):
+    for ch in text:
+        if ("A" <= ch <= "Z") or ("a" <= ch <= "z"):
+            return True
+    return False
 
 
-def prepare(raw_path: str, out_dir: str,
-            train_frac=0.80, valid_frac=0.10,
-            min_chars=2, max_chars=1200, seed=42):
+def is_pure_en(text: str):
+    """True if text contains English and contains NO Japanese."""
+    return is_english(text) and not is_japanese(text)
 
-    raw_file = Path(raw_path)
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
 
-    all_pairs = []
+def is_pure_ja(text: str):
+    """True if text contains Japanese and contains NO English."""
+    return is_japanese(text) and not is_english(text)
 
-    with raw_file.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
 
+# -----------------------------
+# Load & extract all usable pairs
+# -----------------------------
+def load_pairs(path):
+    usable = []
+
+    with Path(path).open("r", encoding="utf-8") as f:
+        for line in tqdm(f, desc="Reading JSONL"):
             try:
                 obj = json.loads(line)
             except json.JSONDecodeError:
                 continue
 
-            en, ja = extract_pair(obj)
-            en, ja = normalize(en), normalize(ja)
-
-            if len(en) < min_chars or len(ja) < min_chars:
+            msgs = obj.get("messages", [])
+            if len(msgs) < 3:
                 continue
 
-            if len(en) > max_chars:
-                en = en[:max_chars]
-            if len(ja) > max_chars:
-                ja = ja[:max_chars]
+            user = msgs[1].get("content", "").strip()
+            assistant = msgs[2].get("content", "").strip()
 
-            all_pairs.append((en, ja))
+            if not user or not assistant:
+                continue
 
-    print(f"Total usable pairs: {len(all_pairs)}")
+            u_en = is_pure_en(user)
+            u_ja = is_pure_ja(user)
+            a_en = is_pure_en(assistant)
+            a_ja = is_pure_ja(assistant)
 
-    random.seed(seed)
-    random.shuffle(all_pairs)
+            # VALID TRANSLATION CASES:
 
-    N = len(all_pairs)
-    n_train = int(N * train_frac)
-    n_valid = int(N * valid_frac)
+            # Case 1 — user EN, assistant JA
+            if u_en and a_ja:
+                usable.append((user, assistant))
+                continue
 
-    train = all_pairs[:n_train]
-    valid = all_pairs[n_train:n_train + n_valid]
-    test = all_pairs[n_train + n_valid:]
+            # Case 2 — user JA, assistant EN → FLIP
+            if u_ja and a_en:
+                usable.append((assistant, user))
+                continue
 
-    def save_split(name, items):
-        en_path = out / f"{name}.en"
-        ja_path = out / f"{name}.ja"
+            # All other cases: mixed language, or non-pure → discard
+            continue
 
-        with en_path.open("w", encoding="utf-8") as fe, \
-             ja_path.open("w", encoding="utf-8") as fj:
-            for en, ja in items:
-                fe.write(en + "\n")
-                fj.write(ja + "\n")
+    return usable
 
-        print(f"Saved {name}: {len(items)} samples")
 
-    save_split("train", train)
-    save_split("valid", valid)
-    save_split("test", test)
+# -----------------------------
+# Saving function
+# -----------------------------
+def save_split(name, pairs, out_dir):
+    en_path = out_dir / f"{name}.en"
+    ja_path = out_dir / f"{name}.ja"
+
+    with en_path.open("w", encoding="utf-8") as fe, ja_path.open("w", encoding="utf-8") as fj:
+        for en, ja in pairs:
+            fe.write(en.replace("\n", " ").strip() + "\n")
+            fj.write(ja.replace("\n", " ").strip() + "\n")
+
+    print(f"Saved {name}: {len(pairs)} samples")
+
+
+# -----------------------------
+# Main
+# -----------------------------
+def main(raw_path, out_dir):
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    print("Extracting clean EN↔JA pairs...")
+    pairs = load_pairs(raw_path)
+    print("Total clean, aligned pairs:", len(pairs))
+
+    # Shuffle
+    import random
+    random.seed(42)
+    random.shuffle(pairs)
+
+    # 80:10:10 split
+    n = len(pairs)
+    n_train = int(0.8 * n)
+    n_valid = int(0.1 * n)
+
+    train = pairs[:n_train]
+    valid = pairs[n_train:n_train+n_valid]
+    test = pairs[n_train+n_valid:]
+
+    save_split("train", train, out_dir)
+    save_split("valid", valid, out_dir)
+    save_split("test", test, out_dir)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--raw", type=str,
-        default="data/raw/Synthetic-JP-EN-Translation-Dataset-Magpie-Nemotron-4-20k.jsonl")
-    parser.add_argument("--out", type=str, default="data/processed")
+    parser.add_argument("--raw", required=True, help="Input JSONL")
+    parser.add_argument("--out", required=True, help="Output directory")
     args = parser.parse_args()
 
-    prepare(args.raw, args.out)
+    main(args.raw, args.out)

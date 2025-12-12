@@ -1,0 +1,91 @@
+# ============================
+#  Python
+# ============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ============================
+#  OS-generated files
+# ============================
+.DS_Store
+Thumbs.db
+
+# Windows junk
+*.exe
+*.dll
+*.lnk
+
+# ============================
+#  Project-specific ignores
+# ============================
+
+# Raw data (DO NOT TRACK)
+data/raw/*
+
+# Processed data outputs
+data/processed/*.en
+data/processed/*.ja
+data/processed/*.txt
+data/processed/*.json
+
+# Tokenizer (can be huge)
+data/vocab/*.model
+data/vocab/*.vocab
+
+# Trained models / checkpoints
+models/checkpoints/*
+models/frozen/*
+models/*.pt
+*.ckpt
+*.onnx
+
+# Logs
+logs/
+*.log
+*.out
+*.err
+
+# Cache directories
+.cache/
+.cache/**
+**/__pycache__/
+
+# Torch artifacts
+*.pt
+*.pth
+*.bin
+
+# SentencePiece temporary files
+*.tmp
+
+# ============================
+#  Build / distribution
+# ============================
+build/
+dist/
+*.egg-info/
+
+# ============================
+#  IDE / Editor
+# ============================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ============================
+#  Docker
+# ============================
+*.tar
+docker/*.tar

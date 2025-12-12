@@ -1,0 +1,14 @@
+dataset:
+  raw_json_dir: "data/raw"
+  processed_dir: "data/processed"
+  vocab_dir: "data/vocab"
+  train_file_prefix: "train"
+  valid_file_prefix: "valid"
+  test_file_prefix: "test"
+
+tokenizer:
+  model_type: "bpe"
+  vocab_size: 8000
+  model_prefix: "ja_en_spm"
+  character_coverage: 0.9995
+  input_sentence_size: 1000000

@@ -30,9 +30,11 @@ class TranslationDataset(torch.utils.data.Dataset):
     def encode_tgt(self, text):
         ids = self.sp.encode(text, out_type=int)
         ids = ids[:self.max_tgt - 2]
+
         inp = [self.bos] + ids
         out = ids + [self.eos]
-        return torch.tensor(inp), torch.tensor(out)
+
+        return torch.tensor(inp, dtype=torch.long), torch.tensor(out, dtype=torch.long)
 
     def __getitem__(self, idx):
         src = self.src_lines[idx]
@@ -46,3 +48,10 @@ class TranslationDataset(torch.utils.data.Dataset):
             "tgt_inp": tgt_inp_ids,
             "tgt_out": tgt_out_ids
         }
+
+
+# Utility function for inference
+def load_sentencepiece_tokenizer(path):
+    sp = spm.SentencePieceProcessor()
+    sp.load(path)
+    return sp

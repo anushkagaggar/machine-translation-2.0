@@ -8,48 +8,51 @@ from pathlib import Path
 from src.models.transformer import MTTransformer
 from src.data.dataset import TranslationDataset
 
-
 def greedy_decode(model, src, pad_id, device, max_len=80):
-    model.eval()
-    src = src.unsqueeze(0).to(device)
+    """
+    Greedy decoding for batch size = 1.
+    Ensures next_token is always a scalar.
+    """
 
+    model.eval()
+
+    src = src.unsqueeze(0).to(device)  # [1, src_len]
     src_pad_mask = (src == pad_id)
 
-    # Encode step
-    memory = model.encode(src, src_key_padding_mask=src_pad_mask)
+    with torch.no_grad():
+        memory = model.encode(src, src_pad_mask)
 
-    # Start with BOS token
-    ys = torch.tensor([[1]], dtype=torch.long, device=device)
+    ys = torch.tensor([[1]], device=device)  # BOS = 1
 
     for _ in range(max_len):
         tgt_pad_mask = (ys == pad_id)
-        seq_len = ys.size(1)
 
-        # Create causal mask
         tgt_mask = torch.triu(
-            torch.ones((seq_len, seq_len), device=device) == 1,
+            torch.ones((ys.size(1), ys.size(1)), device=device) == 1,
             diagonal=1
         )
-        tgt_mask = tgt_mask.float().masked_fill(tgt_mask, float('-inf'))
+        tgt_mask = tgt_mask.float().masked_fill(tgt_mask, float("-inf"))
 
-        # DECODE (FULL SIGNATURE)
-        out = model.decode(
-            ys,
-            memory,
-            tgt_mask=tgt_mask,
-            tgt_key_padding_mask=tgt_pad_mask,
-            memory_key_padding_mask=src_pad_mask
-        )
+        with torch.no_grad():
+            out = model.decode(
+                tgt_tokens=ys,
+                memory=memory,
+                tgt_mask=tgt_mask,
+                tgt_key_padding_mask=tgt_pad_mask,
+                memory_key_padding_mask=src_pad_mask
+            )
 
-        logits = model.generator(out)
-        next_token = logits[:, -1].argmax(dim=-1)
+            logits = model.generator(out)  # [1, seq, vocab]
+            next_token = logits[:, -1, :].argmax(-1)  # shape [1]
 
-        ys = torch.cat([ys, next_token.unsqueeze(0)], dim=1)
+        next_token = next_token.item()   # <-- FORCE SCALAR
 
-        if next_token.item() == 2:  # EOS
+        ys = torch.cat([ys, torch.tensor([[next_token]], device=device)], dim=1)
+
+        if next_token == 2:  # EOS
             break
 
-    return ys[0].tolist()
+    return ys.squeeze(0).tolist()
 
 
 def load_model(checkpoint_path, model_cfg_path, device):

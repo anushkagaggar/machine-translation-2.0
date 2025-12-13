@@ -44,8 +44,13 @@ def greedy_decode(model, src, pad_id, device, max_len=80):
 def load_model(checkpoint_path, model_cfg_path, device):
     import yaml
 
-    cfg = yaml.safe_load(open(model_cfg_path, "r"))
-    mcfg = cfg["model"]
+    full_cfg = yaml.safe_load(open(model_cfg_path, "r"))
+
+    # FIX: model config is inside "model" key
+    if "model" in full_cfg:
+        mcfg = full_cfg["model"]
+    else:
+        mcfg = full_cfg  # fallback if someone uses a flat file
 
     model = MTTransformer(
         src_vocab_size = mcfg["src_vocab_size"],

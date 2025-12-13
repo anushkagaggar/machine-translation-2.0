@@ -12,23 +12,34 @@ from src.data.dataset import TranslationDataset
 def greedy_decode(model, src, pad_id, device, max_len=80):
     model.eval()
     src = src.unsqueeze(0).to(device)
-    src_pad = (src == pad_id)
 
-    # Encode
-    memory = model.encode(src, src_key_padding_mask=src_pad)
+    src_pad_mask = (src == pad_id)
 
-    # Start with BOS=1
+    # Encode step
+    memory = model.encode(src, src_key_padding_mask=src_pad_mask)
+
+    # Start with BOS token
     ys = torch.tensor([[1]], dtype=torch.long, device=device)
 
     for _ in range(max_len):
         tgt_pad_mask = (ys == pad_id)
         seq_len = ys.size(1)
 
-        tgt_mask = torch.triu(torch.ones((seq_len, seq_len), device=device) == 1, diagonal=1)
+        # Create causal mask
+        tgt_mask = torch.triu(
+            torch.ones((seq_len, seq_len), device=device) == 1,
+            diagonal=1
+        )
         tgt_mask = tgt_mask.float().masked_fill(tgt_mask, float('-inf'))
 
-        out = model.decode(ys, memory, tgt_mask=tgt_mask,
-                           tgt_key_padding_mask=tgt_pad_mask)
+        # DECODE (FULL SIGNATURE)
+        out = model.decode(
+            ys,
+            memory,
+            tgt_mask=tgt_mask,
+            tgt_key_padding_mask=tgt_pad_mask,
+            memory_key_padding_mask=src_pad_mask
+        )
 
         logits = model.generator(out)
         next_token = logits[:, -1].argmax(dim=-1)

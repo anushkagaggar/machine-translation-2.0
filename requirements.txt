@@ -19,5 +19,4 @@ pyyaml
 
 requests
 
-# optional but useful/harmless
-matplotlib
+sacrebleu

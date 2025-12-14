@@ -4,14 +4,13 @@ torch==2.2.2+cpu
 torchvision==0.17.2+cpu
 torchaudio==2.2.2+cpu
 
-sentencepiece
-numpy
+numpy<2
 pandas
 tqdm
+sentencepiece
 
 fastapi
 uvicorn
-
 streamlit
 
 sacrebleu

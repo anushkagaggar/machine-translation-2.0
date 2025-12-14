@@ -42,7 +42,7 @@ class Req(BaseModel):
 
 def translate(text):
     ids = sp.encode(text, out_type=int)
-    ids = ids[:mcfg["max_len"] - 1] + [EOS]
+    ids = ids[: mcfg["max_len"] - 1] + [EOS]
 
     src = torch.tensor(ids).unsqueeze(0).to(DEVICE)
     src_mask = (src == PAD)
@@ -51,24 +51,37 @@ def translate(text):
         memory = model.encode(src, src_mask)
 
     out_ids = [BOS]
+
     for _ in range(mcfg["max_len"]):
         ys = torch.tensor([out_ids]).to(DEVICE)
+        tgt_pad_mask = (ys == PAD)
 
         tgt_mask = torch.triu(
-            torch.ones((ys.size(1), ys.size(1)), device=DEVICE) == 1, diagonal=1
-        )
-        tgt_mask = tgt_mask.float().masked_fill(tgt_mask, float("-inf"))
+            torch.ones((ys.size(1), ys.size(1)), device=DEVICE),
+            diagonal=1
+        ).bool()
 
-        logits = model.decode(ys, memory, tgt_mask=tgt_mask, memory_key_padding_mask=src_mask)
-        logits = model.generator(logits[:, -1])
-        next_id = torch.argmax(logits, -1).item()
+        with torch.no_grad():
+            out = model.decode(
+                ys,
+                memory,
+                tgt_pad_mask,
+                src_mask,
+                tgt_mask
+            )
+
+            logits = model.generator(out[:, -1])
+            next_id = torch.argmax(logits, dim=-1)[0].item()
 
         if next_id == EOS:
             break
+
         out_ids.append(next_id)
 
     return sp.decode(out_ids[1:])
 
+
+
 @app.post("/translate")
-def _t(req: Req):
+def translate_api(req: Req):
     return {"translation": translate(req.text)}

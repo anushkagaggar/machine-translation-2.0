@@ -2,10 +2,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY . /app
+# System deps
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
 
+# Python deps
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8000
+# Copy project
+COPY . .
 
-CMD ["uvicorn", "server.api:app", "--host", "0.0.0.0", "--port", "8000"]
+# Expose ports
+EXPOSE 8000
+EXPOSE 8501
+
+# Supervisor
+CMD ["supervisord", "-c", "supervisord.conf"]

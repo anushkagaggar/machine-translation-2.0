@@ -1,13 +1,11 @@
 # ============================
-#  Python
+# Python
 # ============================
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
 *.so
 
-# Virtual environment
+# Virtual environments
 venv/
 env/
 .venv/
@@ -16,80 +14,55 @@ env/
 .ipynb_checkpoints/
 
 # ============================
-#  OS-generated files
+# OS / Editor
 # ============================
 .DS_Store
 Thumbs.db
-
-# Windows junk
-*.exe
-*.dll
-*.lnk
+.vscode/
+.idea/
 
 # ============================
-#  Project-specific ignores
+# Data (DO NOT TRACK)
 # ============================
+data/raw/**
+data/processed/**
+!data/raw/.gitkeep
+!data/processed/.gitkeep
 
-# Raw data (DO NOT TRACK)
-data/raw/*
-
-# Processed data outputs
-data/processed/*.en
-data/processed/*.ja
-data/processed/*.txt
-data/processed/*.json
-
-# Tokenizer (can be huge)
-data/vocab/*.model
-data/vocab/*.vocab
-
-# Trained models / checkpoints
-models/checkpoints/*
-models/frozen/*
-models/*.pt
-*.ckpt
-*.onnx
-
-# Logs
-logs/
-*.log
-*.out
-*.err
-
-# Cache directories
-.cache/
-.cache/**
-**/__pycache__/
-
-# Torch artifacts
+# ============================
+# Models / Artifacts
+# ============================
+models/checkpoints/**
+models/frozen/**
 *.pt
 *.pth
+*.ckpt
+*.onnx
 *.bin
 
-# SentencePiece temporary files
-*.tmp
+# ============================
+# Logs / Cache
+# ============================
+logs/
+*.log
+.cache/
+**/__pycache__/
 
 # ============================
-#  Build / distribution
+# Build
 # ============================
 build/
 dist/
 *.egg-info/
 
 # ============================
-#  IDE / Editor
-# ============================
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# ============================
-#  Docker
+# Docker / Secrets
 # ============================
 *.tar
-docker/*.tar
+.env
+docker/.env
 
-tokenizer/*.model
-tokenizer/*.vocab
-tokenizer/spm_corpus.txt
+# ============================
+# Tokenizer artifacts
+# ============================
+tokenizer/
